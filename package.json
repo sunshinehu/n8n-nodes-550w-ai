@@ -1,6 +1,6 @@
 {
-  "name": "n8n-nodes-550w-ai",
-  "version": "0.1.0",
+  "name": "n8n-nodes-fiftyw-media",
+  "version": "0.1.1",
   "description": "550W AI subtitle and watermark removal with web OAuth",
   "homepage": "https://eraser.550wai.com/agent/",
   "license": "MIT",
@@ -17,7 +17,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/sunshinehu/n8n-nodes-550w-ai.git"
+    "url": "git+https://github.com/sunshinehu/n8n-nodes-550w-ai.git"
   },
   "scripts": {
     "build": "n8n-node build",
