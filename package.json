@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-fiftyw-media",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "550W AI subtitle and watermark removal with web OAuth",
   "homepage": "https://eraser.550wai.com/agent/",
   "license": "MIT",
