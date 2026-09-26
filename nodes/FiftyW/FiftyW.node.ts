@@ -10,7 +10,8 @@ const AUTH = 'fiftyWOAuth2Api';
 export class FiftyW implements INodeType {
   description: INodeTypeDescription = {
     displayName: '550W AI Media', name: 'fiftyW',
-    icon: 'file:icon.svg', group: ['transform'], version: 1,
+    icon: { light: 'file:icon.svg', dark: 'file:icon.svg' }, group: ['transform'], version: 1,
+    subtitle: 'Subtitle and watermark removal',
     description: 'Query credits and media tasks, or submit image and video watermark removal tasks',
     defaults: { name: '550W AI Media' },
     inputs: [NodeConnectionTypes.Main], outputs: [NodeConnectionTypes.Main],
