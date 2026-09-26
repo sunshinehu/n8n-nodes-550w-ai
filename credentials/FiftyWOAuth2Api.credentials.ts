@@ -5,7 +5,7 @@ export class FiftyWOAuth2Api implements ICredentialType {
   name = 'fiftyWOAuth2Api';
   extends = ['oAuth2Api'];
   displayName = '550W AI OAuth2 API';
-  icon: Icon = 'file:../nodes/FiftyW/icon.svg';
+  icon: Icon = { light: 'file:../nodes/FiftyW/icon.svg', dark: 'file:../nodes/FiftyW/icon.svg' };
   documentationUrl = 'https://eraser.550wai.com/agent/';
   properties: INodeProperties[] = [
     { displayName: 'Use Dynamic Client Registration', name: 'useDynamicClientRegistration',
