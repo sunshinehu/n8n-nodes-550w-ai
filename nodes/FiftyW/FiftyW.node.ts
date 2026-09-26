@@ -1,12 +1,9 @@
-import type { IDataObject, IExecuteFunctions, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INodeExecutionData, INodeType, INodeTypeDescription, UsableAsToolDescription } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 const ENDPOINT = 'https://www.550wai.cn/mcp/global';
 const AUTH = 'fiftyWOAuth2Api';
 
-// This node has paid operations; exposing them as AI Tools would let the model
-// set confirmCharge without a human-configured workflow step.
-// eslint-disable-next-line @n8n/community-nodes/node-usable-as-tool
 export class FiftyW implements INodeType {
   description: INodeTypeDescription = {
     displayName: '550W AI Media', name: 'fiftyW',
@@ -15,8 +12,30 @@ export class FiftyW implements INodeType {
     description: 'Query credits and media tasks, or submit image and video watermark removal tasks',
     defaults: { name: '550W AI Media' },
     inputs: [NodeConnectionTypes.Main], outputs: [NodeConnectionTypes.Main],
-    // Deliberately omit usableAsTool. An AI Tool could set confirmCharge itself,
-    // while paid operations require a human-configured workflow step.
+    // The AI Tool variant exposes only reads. The execution guard below also
+    // rejects paid operations if a workflow supplies their parameters directly.
+    usableAsTool: { replacements: {
+      description: 'Read 550W AI credits or the status of an existing media task',
+      properties: [
+        { displayName: 'Resource', name: 'resource', type: 'options', noDataExpression: true,
+          options: [
+            { name: 'Account', value: 'account' },
+            { name: 'Image', value: 'image' },
+            { name: 'Video', value: 'video' },
+          ], default: 'account' },
+        { displayName: 'Operation', name: 'operation', type: 'options', noDataExpression: true,
+          options: [{ name: 'Query Credits', value: 'credits', action: 'Query account credits' }],
+          default: 'credits', displayOptions: { show: { resource: ['account'] } } },
+        { displayName: 'Operation', name: 'operation', type: 'options', noDataExpression: true,
+          options: [{ name: 'Get Task', value: 'imageTask', action: 'Get an image task' }],
+          default: 'imageTask', displayOptions: { show: { resource: ['image'] } } },
+        { displayName: 'Operation', name: 'operation', type: 'options', noDataExpression: true,
+          options: [{ name: 'Get Subtitle Task', value: 'subtitleTask', action: 'Get a subtitle task' }],
+          default: 'subtitleTask', displayOptions: { show: { resource: ['video'] } } },
+        { displayName: 'Task ID', name: 'taskId', type: 'string', default: '', required: true,
+          displayOptions: { show: { operation: ['imageTask', 'subtitleTask'] } } },
+      ],
+    } } as unknown as UsableAsToolDescription,
     credentials: [{ name: AUTH, required: true }],
     properties: [
       { displayName: 'Resource', name: 'resource', type: 'options', noDataExpression: true,
@@ -81,6 +100,10 @@ export class FiftyW implements INodeType {
     for (let index = 0; index < input.length; index++) {
       try {
         const operation = this.getNodeParameter('operation', index) as string;
+        if (this.getNode().type.endsWith('Tool')
+            && !['credits', 'imageTask', 'subtitleTask'].includes(operation))
+          throw new NodeOperationError(this.getNode(), 'AI Tool usage is limited to read-only operations.',
+            { itemIndex: index });
         const tool = operation === 'credits' ? 'query_credits'
           : operation === 'imageTask' ? 'get_image_watermark_task'
             : operation === 'subtitleTask' ? 'get_subtitle_task'
