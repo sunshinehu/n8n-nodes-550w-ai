@@ -1,0 +1,19 @@
+{
+  "name": "n8n-nodes-550w-ai",
+  "version": "0.1.0",
+  "description": "550W AI subtitle and watermark removal with web OAuth",
+  "license": "MIT",
+  "keywords": ["n8n-community-node-package", "n8n", "mcp", "subtitle-removal", "watermark-removal"],
+  "author": { "name": "sunshinehu", "email": "x12363@126.com" },
+  "repository": { "type": "git", "url": "https://github.com/sunshinehu/n8n-nodes-550w-ai.git" },
+  "scripts": { "build": "n8n-node build", "lint": "n8n-node lint" },
+  "files": ["dist"],
+  "n8n": {
+    "n8nNodesApiVersion": 1,
+    "strict": true,
+    "credentials": ["dist/credentials/FiftyWOAuth2Api.credentials.js"],
+    "nodes": ["dist/nodes/FiftyW/FiftyW.node.js"]
+  },
+  "devDependencies": { "@n8n/node-cli": "^0.15.0", "eslint": "^9.39.4", "typescript": "^5.9.3" },
+  "peerDependencies": { "n8n-workflow": ">=1.0.0" }
+}
