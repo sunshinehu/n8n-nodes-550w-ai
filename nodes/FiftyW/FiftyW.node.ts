@@ -41,7 +41,7 @@ export class FiftyW implements INodeType {
           { name: 'Submit Subtitle Task From Uploaded Video', value: 'subtitleMedia', action: 'Submit an uploaded subtitle task' },
           { name: 'Upload Video', value: 'videoUpload', action: 'Upload a video for subtitle removal' },
         ], default: 'subtitleTask', displayOptions: { show: { resource: ['video'] } } },
-      { displayName: 'Image Task ID', name: 'taskId', type: 'string', default: '', required: true,
+      { displayName: 'Task ID', name: 'taskId', type: 'string', default: '', required: true,
         displayOptions: { show: { operation: ['imageTask', 'subtitleTask'] } } },
       { displayName: 'Input Binary Field', name: 'binaryField', type: 'string', default: 'data', required: true,
         description: 'Name of the input item binary field containing one image or video',
