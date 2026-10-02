@@ -1,9 +1,9 @@
 import type { Icon, ICredentialType, ICredentialTestRequest, INodeProperties } from 'n8n-workflow';
-export class FiftyWOAuth2Api implements ICredentialType {
-  name = 'fiftyWOAuth2Api';
+export class MossAiOAuth2Api implements ICredentialType {
+  name = 'mossAiOAuth2Api';
   extends = ['oAuth2Api'];
   displayName = '550W Media OAuth2 API';
-  icon: Icon = { light: 'file:../nodes/FiftyW/icon.svg', dark: 'file:../nodes/FiftyW/icon.svg' };
+  icon: Icon = { light: 'file:../nodes/MossAi/icon.svg', dark: 'file:../nodes/MossAi/icon.svg' };
   documentationUrl = 'https://eraser.550wai.com/agent/';
   test: ICredentialTestRequest = {
     request: { baseURL: 'https://www.550wai.cn/media-api/global/v1', url: '/account', method: 'GET' },

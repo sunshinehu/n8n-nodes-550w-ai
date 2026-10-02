@@ -2,7 +2,7 @@ import type { IDataObject, IExecuteFunctions, INodeExecutionData, INodeType, INo
 import { NodeConnectionTypes, NodeOperationError, UnexpectedError } from 'n8n-workflow';
 
 export const ENDPOINT = 'https://www.550wai.cn/media-api/global/v1';
-const AUTH = 'fiftyWOAuth2Api';
+const CREDENTIAL_TYPE = 'mossAiOAuth2Api';
 const PAID = ['imageWatermark', 'videoErase', 'videoWatermark', 'subtitleUrl'];
 const READ = ['credits', 'imageTask', 'subtitleTask', 'receipt'];
 export function parseResponse(raw: unknown): IDataObject {
@@ -19,9 +19,9 @@ export function selectedArea(values: unknown[]): number[] {
     throw new UnexpectedError('Specify a valid pixel rectangle: x1,y1,x2,y2.');
   return values as number[];
 }
-export class FiftyW implements INodeType {
+export class MossAi implements INodeType {
   description: INodeTypeDescription = {
-    displayName: '550W Watermark & Text Eraser', name: 'fiftyW',
+    displayName: '550W Watermark & Text Eraser', name: 'mossAi',
     icon: { light: 'file:icon.svg', dark: 'file:icon.svg' }, group: ['transform'], version: [1, 2],
     subtitle: '={{$parameter["operation"]}}',
     description: 'Erase image watermarks and video text, or resolve platform share links',
@@ -29,7 +29,7 @@ export class FiftyW implements INodeType {
     inputs: [NodeConnectionTypes.Main], outputs: [NodeConnectionTypes.Main],
     usableAsTool: { replacements: {
       description: 'Read credits, task status or an existing operation receipt. Paid actions are rejected in AI Tool execution.',
-    } }, credentials: [{ name: AUTH, required: true }],
+    } }, credentials: [{ name: CREDENTIAL_TYPE, required: true }],
     properties: [
       { displayName: 'Resource', name: 'resource', type: 'options', noDataExpression: true,
         options: [{ name: 'Account', value: 'account' }, { name: 'Image', value: 'image' },
@@ -84,7 +84,7 @@ export class FiftyW implements INodeType {
         if (this.getNode().type.endsWith('Tool') && !READ.includes(operation)) throw new UnexpectedError('AI Tool usage is limited to read-only operations.');
         if (['videoUpload', 'subtitleMedia'].includes(operation)) throw new UnexpectedError('Legacy MCP upload workflows must migrate to Remove Video Text From Binary File and reconnect OAuth.');
         const request = async (path: string, body?: IDataObject) =>
-          parseResponse(await this.helpers.httpRequestWithAuthentication.call(this, AUTH, {
+          parseResponse(await this.helpers.httpRequestWithAuthentication.call(this, CREDENTIAL_TYPE, {
             method: body ? 'POST' : 'GET', url: ENDPOINT + path, json: true,
             ...(body ? { body } : {}), disableFollowRedirect: true, timeout: 60000,
           }));

@@ -1,14 +1,14 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { Readable } = require('node:stream');
-const { FiftyW, ENDPOINT, parseResponse, selectedArea } = require('../dist/nodes/FiftyW/FiftyW.node');
-const { FiftyWOAuth2Api } = require('../dist/credentials/FiftyWOAuth2Api.credentials');
-function context(params, helpers = {}, type = 'fiftyW', continueOnFail = false) {
+const { MossAi, ENDPOINT, parseResponse, selectedArea } = require('../dist/nodes/MossAi/MossAi.node');
+const { MossAiOAuth2Api } = require('../dist/credentials/MossAiOAuth2Api.credentials');
+function context(params, helpers = {}, type = 'mossAi', continueOnFail = false) {
   const authenticated = helpers.httpRequestWithAuthentication;
   if (authenticated) {
     helpers.httpRequestWithAuthentication = async (auth, req) => {
       if (req.url.endsWith('/upload-ticket')) {
-        assert.equal(auth, 'fiftyWOAuth2Api');
+        assert.equal(auth, 'mossAiOAuth2Api');
         return { code: 200, ticket: '12345678-1234-1234-1234-123456789abc'.repeat(2) };
       }
       return authenticated(auth, req);
@@ -26,31 +26,31 @@ function context(params, helpers = {}, type = 'fiftyW', continueOnFail = false) 
 const paid = { operationId: 'stable-operation-1', confirmCharge: true };
 test('old node version cannot silently submit paid REST tasks', async () => {
   const ctx = context({ ...paid, operation: 'imageWatermark' });
-  ctx.getNode = () => ({ name: '550W', type: 'fiftyW', typeVersion: 1 });
-  await assert.rejects(new FiftyW().execute.call(ctx), /Upgrade this node to version 2/);
+  ctx.getNode = () => ({ name: '550W', type: 'mossAi', typeVersion: 1 });
+  await assert.rejects(new MossAi().execute.call(ctx), /Upgrade this node to version 2/);
 });
 test('credential connection test is read-only', () => {
-  assert.equal(new FiftyWOAuth2Api().test.request.method, 'GET');
-  assert.equal(new FiftyWOAuth2Api().test.request.url, '/account');
+  assert.equal(new MossAiOAuth2Api().test.request.method, 'GET');
+  assert.equal(new MossAiOAuth2Api().test.request.url, '/account');
 });
 test('credits use native REST and fixed authenticated origin', async () => {
   const ctx = context({ operation: 'credits' }, { httpRequestWithAuthentication: async (auth, req) => {
-    assert.equal(auth, 'fiftyWOAuth2Api'); assert.equal(req.method, 'GET');
+    assert.equal(auth, 'mossAiOAuth2Api'); assert.equal(req.method, 'GET');
     assert.equal(req.url, ENDPOINT + '/account'); assert.equal(req.body, undefined);
     assert.equal(req.disableFollowRedirect, true);
     return { code: 200, credits: 20 };
   } });
-  assert.equal((await new FiftyW().execute.call(ctx))[0][0].json.credits, 20);
+  assert.equal((await new MossAi().execute.call(ctx))[0][0].json.credits, 20);
 });
 test('AI tools reject paid calls before file or network access', async () => {
-  await assert.rejects(new FiftyW().execute.call(context({ operation: 'videoErase' }, {}, 'fiftyWTool')), /read-only/);
+  await assert.rejects(new MossAi().execute.call(context({ operation: 'videoErase' }, {}, 'mossAiTool')), /read-only/);
 });
 test('paid submission requires explicit approval', async () => {
-  await assert.rejects(new FiftyW().execute.call(context({ ...paid, operation: 'videoWatermark', confirmCharge: false })), /Approve/);
+  await assert.rejects(new MossAi().execute.call(context({ ...paid, operation: 'videoWatermark', confirmCharge: false })), /Approve/);
 });
 test('legacy upload never silently becomes a paid task', async () => {
   for (const operation of ['videoUpload', 'subtitleMedia'])
-    await assert.rejects(new FiftyW().execute.call(context({ operation })), /must migrate/);
+    await assert.rejects(new MossAi().execute.call(context({ operation })), /must migrate/);
 });
 test('oversized filesystem binary is rejected before reading', async () => {
   const ctx = context({ ...paid, operation: 'videoErase', binaryField: 'data' }, {
@@ -58,13 +58,13 @@ test('oversized filesystem binary is rejected before reading', async () => {
     getBinaryMetadata: async () => ({ fileSize: 201 * 1024 * 1024 }),
     getBinaryStream: async () => { throw new Error('must not read'); },
   });
-  await assert.rejects(new FiftyW().execute.call(ctx), /size limit/);
+  await assert.rejects(new MossAi().execute.call(ctx), /size limit/);
 });
 test('structured REST failure is not a successful task', async () => {
   const ctx = context({ operation: 'subtitleTask', taskId: 'existing' }, {
     httpRequestWithAuthentication: async () => ({ code: 404, errorCode: 'TASK_NOT_FOUND' }),
   });
-  await assert.rejects(new FiftyW().execute.call(ctx), /TASK_NOT_FOUND/);
+  await assert.rejects(new MossAi().execute.call(ctx), /TASK_NOT_FOUND/);
 });
 for (const fail of [false, true]) test('filesystem upload closes streams on ' + (fail ? 'failure' : 'success'), async () => {
   const stream = Readable.from([Buffer.from('video')]);
@@ -85,8 +85,8 @@ for (const fail of [false, true]) test('filesystem upload closes streams on ' + 
       return JSON.stringify({ code: 200, status: 'preparing', operationId: paid.operationId });
     },
   });
-  if (fail) await assert.rejects(new FiftyW().execute.call(ctx), /Query operation receipt stable-operation-1/);
-  else assert.equal((await new FiftyW().execute.call(ctx))[0][0].json.status, 'preparing');
+  if (fail) await assert.rejects(new MossAi().execute.call(ctx), /Query operation receipt stable-operation-1/);
+  else assert.equal((await new MossAi().execute.call(ctx))[0][0].json.status, 'preparing');
   assert.equal(stream.destroyed, true);
 });
 test('inline image uploads with multipart fields and explicit approval', async () => {
@@ -100,7 +100,7 @@ test('inline image uploads with multipart fields and explicit approval', async (
       return { code: 200, status: 'preparing' };
     },
   });
-  assert.equal((await new FiftyW().execute.call(ctx))[0][0].json.status, 'preparing');
+  assert.equal((await new MossAi().execute.call(ctx))[0][0].json.status, 'preparing');
 });
 test('direct URL defaults to full frame without fake dimensions', async () => {
   const ctx = context({ ...paid, operation: 'subtitleUrl', subtitleVideoUrl: 'https://example.com/video.mp4' }, {
@@ -109,7 +109,7 @@ test('direct URL defaults to full frame without fake dimensions', async () => {
       return { code: 200, status: 'preparing' };
     },
   });
-  await new FiftyW().execute.call(ctx);
+  await new MossAi().execute.call(ctx);
 });
 test('explicit rectangle is forwarded and malformed rectangles rejected', async () => {
   assert.deepEqual(selectedArea([1, 2, 10, 20]), [1, 2, 10, 20]);
@@ -120,8 +120,8 @@ test('timeout exposes recovery ID and never resubmits', async () => {
   let calls = 0;
   const ctx = context({ ...paid, operation: 'videoWatermark', videoUrl: 'https://www.tiktok.com/@test/video/123' }, {
     httpRequestWithAuthentication: async () => { calls++; throw new Error('timeout'); },
-  }, 'fiftyW', true);
-  const result = (await new FiftyW().execute.call(ctx))[0][0].json;
+  }, 'mossAi', true);
+  const result = (await new MossAi().execute.call(ctx))[0][0].json;
   assert.equal(calls, 1); assert.equal(result.operationId, paid.operationId);
   assert.equal(result.submissionStatus, 'unknown');
 });
@@ -132,15 +132,15 @@ test('receipt action is read-only and preserves resolved download URL', async ()
       assert.equal(req.method, 'GET'); assert.equal(req.url, ENDPOINT + '/operations/' + paid.operationId);
       return { code: 200, status: 'completed', videoUrl: resolved };
     },
-  }, 'fiftyWTool');
-  assert.equal((await new FiftyW().execute.call(ctx))[0][0].json.videoUrl, resolved);
+  }, 'mossAiTool');
+  assert.equal((await new MossAi().execute.call(ctx))[0][0].json.videoUrl, resolved);
 });
 test('malformed responses and path injection are rejected', async () => {
   for (const value of [null, [], { credits: 2 }, '{']) assert.throws(() => parseResponse(value));
-  await assert.rejects(new FiftyW().execute.call(context({ operation: 'subtitleTask', taskId: '../account' })), /Invalid task/);
+  await assert.rejects(new MossAi().execute.call(context({ operation: 'subtitleTask', taskId: '../account' })), /Invalid task/);
 });
 test('credential uses dynamic OAuth, mandatory PKCE and media audience', () => {
-  const fields = Object.fromEntries(new FiftyWOAuth2Api().properties.map(p => [p.name, p.default]));
+  const fields = Object.fromEntries(new MossAiOAuth2Api().properties.map(p => [p.name, p.default]));
   assert.equal(fields.useDynamicClientRegistration, true); assert.equal(fields.usePkce, true);
   assert.equal(fields.serverUrl, 'https://www.550wai.cn/media-api/global');
   assert.equal(fields.resource, 'https://www.550wai.cn/media-api/global');

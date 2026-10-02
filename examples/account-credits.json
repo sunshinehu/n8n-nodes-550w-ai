@@ -19,7 +19,7 @@
       },
       "id": "550w-action",
       "name": "550W account credits",
-      "type": "n8n-nodes-fiftyw-media.fiftyW",
+      "type": "n8n-nodes-moss-ai.mossAi",
       "typeVersion": 2,
       "position": [
         260,

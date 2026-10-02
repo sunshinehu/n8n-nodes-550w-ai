@@ -111,5 +111,8 @@ OAuth round-trip/refresh/revocation works. Before publication, verify exact call
 fresh login, refresh, revocation, image and short video processing, receipt recovery
 and result URLs against the deployed service. No review acceptance is implied.
 
-Package name stays `n8n-nodes-fiftyw-media`. Historical npm versions 0.1.x used MCP
-and were not accepted by manual review; this REST migration requires a new review.
+Package ID is `n8n-nodes-moss-ai`. This is a separate application from the legacy
+`n8n-nodes-fiftyw-media` package; it does not replace existing workflow node IDs.
+For migration, add the new node, recreate its OAuth credential and copy reviewed
+parameters. Do not execute both paid nodes for the same input. The legacy package
+and its review submission remain untouched.

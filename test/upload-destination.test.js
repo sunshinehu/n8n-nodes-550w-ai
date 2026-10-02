@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { isTrustedUploadDestination } = require('../dist/nodes/FiftyW/upload-destination');
+const { isTrustedUploadDestination } = require('../dist/nodes/MossAi/upload-destination');
 
 const ticket = '12345678-1234-1234-1234-123456789abc';
 

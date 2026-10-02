@@ -1,5 +1,5 @@
 {
-  "name": "n8n-nodes-fiftyw-media",
+  "name": "n8n-nodes-moss-ai",
   "version": "3.1.5",
   "description": "Erase image watermarks and video text, and resolve share links using native 550W OAuth REST APIs",
   "homepage": "https://eraser.550wai.com/agent/",
@@ -26,9 +26,9 @@
     "dev": "n8n-node dev"
   },
   "files": [
-    "dist/credentials/FiftyWOAuth2Api.credentials.js",
-    "dist/nodes/FiftyW/FiftyW.node.js",
-    "dist/nodes/FiftyW/icon.svg",
+    "dist/credentials/MossAiOAuth2Api.credentials.js",
+    "dist/nodes/MossAi/MossAi.node.js",
+    "dist/nodes/MossAi/icon.svg",
     "examples/*.json",
     "docs/server-setup.md"
   ],
@@ -36,10 +36,10 @@
     "n8nNodesApiVersion": 1,
     "strict": true,
     "credentials": [
-      "dist/credentials/FiftyWOAuth2Api.credentials.js"
+      "dist/credentials/MossAiOAuth2Api.credentials.js"
     ],
     "nodes": [
-      "dist/nodes/FiftyW/FiftyW.node.js"
+      "dist/nodes/MossAi/MossAi.node.js"
     ]
   },
   "devDependencies": {
