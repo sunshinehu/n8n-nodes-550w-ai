@@ -9,7 +9,9 @@ export class FiftyWOAuth2Api implements ICredentialType {
     request: { baseURL: 'https://www.550wai.cn/media-api/global/v1', url: '/account', method: 'GET' },
   };
   properties: INodeProperties[] = [
-    { displayName: 'Use Dynamic Client Registration', name: 'useDynamicClientRegistration', type: 'hidden', default: false },
+    { displayName: 'Connect using your 550W account. No API key or shared client secret is required. After upgrading from 3.1.4 or earlier, create a new credential to use automatic registration. Your n8n instance needs an HTTPS OAuth callback.', name: 'connectionNotice', type: 'notice', default: '' },
+    { displayName: 'Use Dynamic Client Registration', name: 'useDynamicClientRegistration', type: 'hidden', default: true },
+    { displayName: 'Server URL', name: 'serverUrl', type: 'hidden', default: 'https://www.550wai.cn/media-api/global' },
     { displayName: 'Grant Type', name: 'grantType', type: 'hidden', default: 'authorizationCode' },
     { displayName: 'Use PKCE', name: 'usePkce', type: 'hidden', default: true },
     { displayName: 'Authorization URL', name: 'authUrl', type: 'hidden', default: 'https://www.550wai.cn/oauth2/authorize' },

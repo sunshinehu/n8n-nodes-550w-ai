@@ -7,6 +7,31 @@ unchanged; confidential REST clients now also pass static registration validatio
 
 ## Deployment prerequisites
 
+### Default: per-instance dynamic registration
+
+The bundled Server configuration enables `wai.oauth.registration.n8n.enabled=true`
+when the existing OAuth and media HTTP services are active. Disable it using
+`WAI_OAUTH_N8N_REGISTRATION_ENABLED=false` if needed. No callback domain needs to
+be preconfigured and no shared client secret is shipped in the node package.
+Current n8n discovers `/media-api/global` through RFC 9728 metadata, then uses
+`/oauth2/register` to obtain its independent public client ID. PKCE S256 is required.
+Callbacks must use HTTPS and end in `/rest/oauth2-credential/callback`, with no
+userinfo, wildcard, query or fragment. Authorization still matches the registered
+callback exactly. Custom n8n REST endpoint names require static registration.
+
+The compatibility profile allows only the four HTTP media scopes below; it grants
+no MCP or deletion access. Existing registration rate limits and grant revocation
+apply. A self-reported n8n name is not verified identity: dynamic registrations
+remain unverified and task attribution is `unknown/oauth`. Administrator-approved
+static registrations may retain trusted `n8n/oauth` attribution. No database schema
+change is required for dynamic registration; existing OAuth client storage is reused.
+
+This source change is not yet deployed or included in the already published npm
+3.1.4 artifact. Deploy the Server first, then publish an updated node package and
+verify a real OAuth round-trip before claiming production acceptance.
+
+### Optional: administrator-approved static clients
+
 Use the existing external static-client configuration file. Do not replace the
 whole file with the following example; merge the new client with existing entries.
 Enable existing gates:
@@ -82,7 +107,7 @@ credit deduction and refunds. n8n does not supply guessed dimensions or prices.
 ## Observability boundary
 
 Billing and task outcomes remain authoritative in existing business records.
-`mediaClientPlatform: n8n` is trusted server registration metadata, not a request
+For administrator-approved static clients, `mediaClientPlatform: n8n` is trusted server registration metadata, not a request
 header. New image/video tasks and HTTP events are attributed to `n8n/oauth`;
 missing metadata is attributed to `unknown`, not a browser. Existing records
 are not rewritten. Share-link provenance is in HTTP events;

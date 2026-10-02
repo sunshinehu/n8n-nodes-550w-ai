@@ -139,9 +139,10 @@ test('malformed responses and path injection are rejected', async () => {
   for (const value of [null, [], { credits: 2 }, '{']) assert.throws(() => parseResponse(value));
   await assert.rejects(new FiftyW().execute.call(context({ operation: 'subtitleTask', taskId: '../account' })), /Invalid task/);
 });
-test('credential uses static OAuth, mandatory PKCE and media audience', () => {
+test('credential uses dynamic OAuth, mandatory PKCE and media audience', () => {
   const fields = Object.fromEntries(new FiftyWOAuth2Api().properties.map(p => [p.name, p.default]));
-  assert.equal(fields.useDynamicClientRegistration, false); assert.equal(fields.usePkce, true);
+  assert.equal(fields.useDynamicClientRegistration, true); assert.equal(fields.usePkce, true);
+  assert.equal(fields.serverUrl, 'https://www.550wai.cn/media-api/global');
   assert.equal(fields.resource, 'https://www.550wai.cn/media-api/global');
   assert.equal(fields.authentication, 'body'); assert.ok(!fields.scope.includes('tasks:delete'));
 });

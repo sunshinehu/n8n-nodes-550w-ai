@@ -8,16 +8,23 @@ Pixel coordinates are advanced options, checked against the real video by the se
 
 ## Connection setup
 
-Use a current n8n release supporting static OAuth with `usePkce` and RFC 8707
+Version 3.1.5 uses per-instance automatic OAuth registration. After upgrading from
+3.1.4 or earlier, create a new credential and select it in existing workflows;
+saved static-registration fields do not automatically migrate. The updated Server
+must be deployed before connecting this version.
+
+Use a current n8n release supporting dynamic OAuth registration with `usePkce` and RFC 8707
 resource indicators. The previously tested n8n 2.40.7 MCP workflow is **not**
 evidence that this new REST integration passes end-to-end verification.
 
 1. Create the **550W Media OAuth2 API** credential.
-2. Copy its exact HTTPS OAuth callback URL to the server administrator.
-3. Register a separate confidential client for this n8n installation (see
-   [server setup](docs/server-setup.md)).
-4. Enter the registered Client ID and Client Secret in n8n, then connect your
-   550W account. These are OAuth application credentials, not a user API key.
+2. Use a production n8n instance with an HTTPS OAuth callback ending in
+   `/rest/oauth2-credential/callback` (a reverse-proxy path prefix is supported).
+3. Connect your 550W account. n8n discovers the HTTP resource and registers an
+   independent PKCE client automatically; no shared secret or user API key is needed.
+4. The Server must have the n8n compatibility profile enabled (see
+   [server setup](docs/server-setup.md)). Existing statically registered credentials
+   remain supported by the service; recreate the credential to use dynamic registration.
 5. Existing MCP OAuth credentials must be reconnected: the audience is now
    `https://www.550wai.cn/media-api/global`.
 
