@@ -1,0 +1,48 @@
+{
+  "name": "550W submission recovery",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual-start",
+      "name": "Start",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "receipt",
+        "operation": "receipt",
+        "operationId": "replace-with-your-stable-id"
+      },
+      "id": "550w-action",
+      "name": "550W submission recovery",
+      "type": "n8n-nodes-fiftyw-media.fiftyW",
+      "typeVersion": 2,
+      "position": [
+        260,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "550W submission recovery",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false
+}

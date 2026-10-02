@@ -1,213 +1,196 @@
-import type { IDataObject, IExecuteFunctions, INodeExecutionData, INodeType, INodeTypeDescription, UsableAsToolDescription } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import type { IDataObject, IExecuteFunctions, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError, UnexpectedError } from 'n8n-workflow';
 
-const ENDPOINT = 'https://www.550wai.cn/mcp/global';
+export const ENDPOINT = 'https://www.550wai.cn/media-api/global/v1';
 const AUTH = 'fiftyWOAuth2Api';
-
+const PAID = ['imageWatermark', 'videoErase', 'videoWatermark', 'subtitleUrl'];
+const READ = ['credits', 'imageTask', 'subtitleTask', 'receipt'];
+export function parseResponse(raw: unknown): IDataObject {
+  const value = typeof raw === 'string' ? JSON.parse(raw) : raw;
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new UnexpectedError('Invalid 550W response.');
+  const data = value as IDataObject;
+  if (typeof data.code !== 'number') throw new UnexpectedError('Missing 550W response code.');
+  if (data.code !== 200) throw new UnexpectedError(String(data.errorCode || data.message || '550W request failed.'));
+  return data;
+}
+export function selectedArea(values: unknown[]): number[] {
+  if (values.length !== 4 || !values.every(v => Number.isSafeInteger(v) && Number(v) >= 0 && Number(v) <= 99999)
+      || Number(values[2]) <= Number(values[0]) || Number(values[3]) <= Number(values[1]))
+    throw new UnexpectedError('Specify a valid pixel rectangle: x1,y1,x2,y2.');
+  return values as number[];
+}
 export class FiftyW implements INodeType {
   description: INodeTypeDescription = {
-    displayName: '550W AI Media', name: 'fiftyW',
-    icon: { light: 'file:icon.svg', dark: 'file:icon.svg' }, group: ['transform'], version: 1,
-    subtitle: 'Subtitle and watermark removal',
-    description: 'Query credits and media tasks, or submit image and video watermark removal tasks',
-    defaults: { name: '550W AI Media' },
+    displayName: '550W Watermark & Text Eraser', name: 'fiftyW',
+    icon: { light: 'file:icon.svg', dark: 'file:icon.svg' }, group: ['transform'], version: [1, 2],
+    subtitle: '={{$parameter["operation"]}}',
+    description: 'Erase image watermarks and video text, or resolve platform share links',
+    defaults: { name: '550W Watermark & Text Eraser' },
     inputs: [NodeConnectionTypes.Main], outputs: [NodeConnectionTypes.Main],
-    // The AI Tool variant exposes only reads. The execution guard below also
-    // rejects paid operations if a workflow supplies their parameters directly.
     usableAsTool: { replacements: {
-      description: 'Read 550W AI credits or the status of an existing media task',
-      properties: [
-        { displayName: 'Resource', name: 'resource', type: 'options', noDataExpression: true,
-          options: [
-            { name: 'Account', value: 'account' },
-            { name: 'Image', value: 'image' },
-            { name: 'Video', value: 'video' },
-          ], default: 'account' },
-        { displayName: 'Operation', name: 'operation', type: 'options', noDataExpression: true,
-          options: [{ name: 'Query Credits', value: 'credits', action: 'Query account credits' }],
-          default: 'credits', displayOptions: { show: { resource: ['account'] } } },
-        { displayName: 'Operation', name: 'operation', type: 'options', noDataExpression: true,
-          options: [{ name: 'Get Task', value: 'imageTask', action: 'Get an image task' }],
-          default: 'imageTask', displayOptions: { show: { resource: ['image'] } } },
-        { displayName: 'Operation', name: 'operation', type: 'options', noDataExpression: true,
-          options: [{ name: 'Get Subtitle Task', value: 'subtitleTask', action: 'Get a subtitle task' }],
-          default: 'subtitleTask', displayOptions: { show: { resource: ['video'] } } },
-        { displayName: 'Task ID', name: 'taskId', type: 'string', default: '', required: true,
-          displayOptions: { show: { operation: ['imageTask', 'subtitleTask'] } } },
-      ],
-    } } as unknown as UsableAsToolDescription,
-    credentials: [{ name: AUTH, required: true }],
+      description: 'Read credits, task status or an existing operation receipt. Paid actions are rejected in AI Tool execution.',
+    } }, credentials: [{ name: AUTH, required: true }],
     properties: [
       { displayName: 'Resource', name: 'resource', type: 'options', noDataExpression: true,
-        options: [
-          { name: 'Account', value: 'account' },
-          { name: 'Image', value: 'image' },
-          { name: 'Video', value: 'video' },
-        ], default: 'account' },
-      { displayName: 'Operation', name: 'operation', type: 'options', noDataExpression: true,
-        options: [{ name: 'Query Credits', value: 'credits', action: 'Query account credits' }], default: 'credits',
-        displayOptions: { show: { resource: ['account'] } } },
-      { displayName: 'Operation', name: 'operation', type: 'options', noDataExpression: true,
-        options: [
-          { name: 'Get Task', value: 'imageTask', action: 'Get an image task' },
-          { name: 'Remove Watermark', value: 'imageWatermark', action: 'Remove an image watermark' },
-        ], default: 'imageTask', displayOptions: { show: { resource: ['image'] } } },
-      { displayName: 'Operation', name: 'operation', type: 'options', noDataExpression: true,
-        options: [
-          { name: 'Get Subtitle Task', value: 'subtitleTask', action: 'Get a subtitle task' },
-          { name: 'Remove Watermark From Share URL', value: 'videoWatermark', action: 'Remove a video watermark' },
-          { name: 'Submit Subtitle Task From Direct URL', value: 'subtitleUrl', action: 'Submit a subtitle task' },
-          { name: 'Submit Subtitle Task From Uploaded Video', value: 'subtitleMedia', action: 'Submit an uploaded subtitle task' },
-          { name: 'Upload Video', value: 'videoUpload', action: 'Upload a video for subtitle removal' },
-        ], default: 'subtitleTask', displayOptions: { show: { resource: ['video'] } } },
+        options: [{ name: 'Account', value: 'account' }, { name: 'Image', value: 'image' },
+          { name: 'Operation Receipt', value: 'receipt' }, { name: 'Video', value: 'video' }], default: 'account' },
+      ...[
+        { resource: 'account', options: [{ name: 'Get Account Credits', value: 'credits', action: 'Get account credits' }] },
+        { resource: 'image', options: [{ name: 'Get Image Task', value: 'imageTask', action: 'Get an image task' },
+          { name: 'Remove Image Watermark', value: 'imageWatermark', action: 'Remove an image watermark' }] },
+        { resource: 'receipt', options: [{ name: 'Get Operation Receipt', value: 'receipt', action: 'Get an operation receipt' }] },
+        { resource: 'video', options: [
+          { name: 'Get Video Task', value: 'subtitleTask', action: 'Get a video task' },
+          { name: 'Remove Platform Watermark From Share Link', value: 'videoWatermark', action: 'Resolve a video share link' },
+          { name: 'Remove Video Text From Binary File', value: 'videoErase', action: 'Remove text from a video file' },
+          { name: 'Remove Video Text From Direct URL', value: 'subtitleUrl', action: 'Remove text from a video URL' },
+        ] },
+      ].map(group => ({ displayName: 'Operation', name: 'operation', type: 'options' as const, noDataExpression: true,
+        options: group.options, default: group.options[0].value, displayOptions: { show: { resource: [group.resource] } } })),
       { displayName: 'Task ID', name: 'taskId', type: 'string', default: '', required: true,
         displayOptions: { show: { operation: ['imageTask', 'subtitleTask'] } } },
+      { displayName: 'Operation ID', name: 'operationId', type: 'string', default: '', required: true,
+        description: 'Stable 8–64 character ID. Query its receipt after a timeout before retrying the same input.',
+        displayOptions: { show: { operation: [...PAID, 'receipt'] } } },
       { displayName: 'Input Binary Field', name: 'binaryField', type: 'string', default: 'data', required: true,
-        description: 'Name of the input item binary field containing one image or video',
-        displayOptions: { show: { operation: ['imageWatermark', 'videoUpload'] } } },
-      { displayName: 'Media ID', name: 'mediaId', type: 'string', default: '', required: true,
-        description: 'Media ID from the Upload Video operation, valid for two hours',
-        displayOptions: { show: { operation: ['subtitleMedia'] } } },
+        displayOptions: { show: { operation: ['imageWatermark', 'videoErase'] } } },
       { displayName: 'Video Share URL', name: 'videoUrl', type: 'string', default: '', required: true,
+        description: 'TikTok or X share link copied from the app or website',
         displayOptions: { show: { operation: ['videoWatermark'] } } },
       { displayName: 'Public Video URL', name: 'subtitleVideoUrl', type: 'string', default: '', required: true,
-        description: 'Public HTTPS direct video URL, not a local file or a short-video share link',
+        description: 'Public HTTPS direct MP4 or MOV link, not a platform share link',
         displayOptions: { show: { operation: ['subtitleUrl'] } } },
-      { displayName: 'Video Width', name: 'width', type: 'number', default: 0, required: true,
-        description: 'Actual probed video width in pixels; do not guess',
-        displayOptions: { show: { operation: ['subtitleUrl', 'subtitleMedia'] } } },
-      { displayName: 'Video Height', name: 'height', type: 'number', default: 0, required: true,
-        description: 'Actual probed video height in pixels; do not guess',
-        displayOptions: { show: { operation: ['subtitleUrl', 'subtitleMedia'] } } },
-      { displayName: 'Video Duration', name: 'duration', type: 'number', default: 0, required: true,
-        description: 'Actual probed duration in whole seconds; maximum 600',
-        displayOptions: { show: { operation: ['subtitleUrl', 'subtitleMedia'] } } },
-      { displayName: 'Operation ID', name: 'operationId', type: 'string', default: '', required: true,
-        description: 'Supply a stable ID of 8–64 letters, digits, dot, underscore, colon or hyphen. Reuse it after a timeout to avoid duplicate charges.',
-        displayOptions: { show: { operation: ['imageWatermark', 'videoWatermark'] } } },
-      { displayName: 'Idempotency Key', name: 'idempotencyKey', type: 'string', default: '', required: true,
-        description: 'Stable 8–128 character key. Retry with the same key and input after a timeout.',
-        displayOptions: { show: { operation: ['subtitleUrl', 'subtitleMedia'] } } },
-      { displayName: 'I Confirm the Credit Charge', name: 'confirmCharge', type: 'boolean', default: false,
-        description: 'Whether to submit a paid task. Images currently cost 10 credits; short-video watermarks cost 1; subtitle tasks use the estimated price.',
-        displayOptions: { show: { operation: ['imageWatermark', 'videoWatermark', 'subtitleUrl', 'subtitleMedia'] } } },
+      { displayName: 'I Approve Upload and Credit Usage', name: 'confirmCharge', type: 'boolean', default: false,
+        description: 'Whether to send the selected media to 550W and submit a paid processing task',
+        displayOptions: { show: { operation: PAID } } },
+      { displayName: 'Advanced: Erase Region', name: 'eraseRegion', type: 'options', default: 'full',
+        options: [{ name: 'Full Frame', value: 'full' }, { name: 'Pixel Rectangle', value: 'rectangle' }],
+        displayOptions: { show: { operation: ['subtitleUrl', 'videoErase'] } } },
+      ...['x1', 'y1', 'x2', 'y2'].map(name => ({
+        displayName: name.toUpperCase(), name, type: 'number' as const, default: 0,
+        displayOptions: { show: { operation: ['subtitleUrl', 'videoErase'], eraseRegion: ['rectangle'] } },
+      })),
     ],
   };
-
   async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-    const input = this.getInputData();
     const output: INodeExecutionData[] = [];
-    for (let index = 0; index < input.length; index++) {
+    for (let index = 0; index < this.getInputData().length; index++) {
+      let operationId = '';
+      let submitted = false;
       try {
-        const operation = this.getNodeParameter('operation', index) as string;
-        if (this.getNode().type.endsWith('Tool')
-            && !['credits', 'imageTask', 'subtitleTask'].includes(operation))
-          throw new NodeOperationError(this.getNode(), 'AI Tool usage is limited to read-only operations.',
-            { itemIndex: index });
-        const tool = operation === 'credits' ? 'query_credits'
-          : operation === 'imageTask' ? 'get_image_watermark_task'
-            : operation === 'subtitleTask' ? 'get_subtitle_task'
-              : 'remove_video_watermark';
-        const invoke = async (name: string, args: Record<string, unknown> = {}): Promise<Record<string, unknown>> => {
-          const response = await this.helpers.httpRequestWithAuthentication.call(this, AUTH, {
-            method: 'POST', url: ENDPOINT, json: true,
-            headers: { Accept: 'application/json, text/event-stream',
-              'MCP-Protocol-Version': '2025-11-25' },
-            body: { jsonrpc: '2.0', id: `${Date.now()}-${index}`,
-              method: 'tools/call', params: { name, arguments: args } },
-          });
-          if (response.error || response.result?.isError) {
-            const detail = response.result?.structuredContent || {};
-            throw new NodeOperationError(this.getNode(),
-              String(detail.message || detail.errorCode || response.error?.message || '550W tool failed.'),
-              { itemIndex: index });
-          }
-          return response.result?.structuredContent || {};
-        };
-        let args: Record<string, unknown> = {};
-        if (operation === 'imageTask' || operation === 'subtitleTask') {
-          args = { taskId: this.getNodeParameter('taskId', index) as string };
-        } else if (operation === 'subtitleUrl' || operation === 'subtitleMedia') {
-          if (this.getNodeParameter('confirmCharge', index) !== true)
-            throw new NodeOperationError(this.getNode(), 'Confirm the estimated credit charge before submitting.',
-              { itemIndex: index });
-          const idempotencyKey = this.getNodeParameter('idempotencyKey', index) as string;
-          const videoUrl = operation === 'subtitleUrl'
-            ? this.getNodeParameter('subtitleVideoUrl', index) as string : '';
-          const mediaId = operation === 'subtitleMedia'
-            ? this.getNodeParameter('mediaId', index) as string : '';
-          const width = this.getNodeParameter('width', index) as number;
-          const height = this.getNodeParameter('height', index) as number;
-          const duration = this.getNodeParameter('duration', index) as number;
-          if (!/^[A-Za-z0-9._:-]{8,128}$/.test(idempotencyKey)
-              || (operation === 'subtitleUrl' && !videoUrl.startsWith('https://'))
-              || (operation === 'subtitleMedia' && !/^[0-9a-f-]{36}$/.test(mediaId))
-              || ![width, height, duration].every(value => Number.isSafeInteger(value) && value > 0))
-            throw new NodeOperationError(this.getNode(), 'Provide a stable key, valid video source and actual video dimensions.',
-              { itemIndex: index });
-          const quote = await invoke('estimate_subtitle_cost', { width, height, duration });
-          if (quote.enoughCredits !== true)
-            throw new NodeOperationError(this.getNode(), 'Insufficient 550W credits for this subtitle task.',
-              { itemIndex: index });
-          const submitted = await invoke('submit_subtitle_task',
-            { ...(operation === 'subtitleUrl' ? { videoUrl } : { mediaId }),
-              width, height, duration, idempotencyKey });
-          output.push({ json: { ...submitted as IDataObject, estimatedCredits: Number(quote.estimatedCredits) },
-            pairedItem: index });
-          continue;
-        } else if (operation === 'videoWatermark' || operation === 'imageWatermark' || operation === 'videoUpload') {
-          if (operation !== 'videoUpload' && this.getNodeParameter('confirmCharge', index) !== true)
-            throw new NodeOperationError(this.getNode(), 'Confirm the credit charge before submitting.', { itemIndex: index });
-          const operationId = operation === 'videoUpload' ? ''
-            : this.getNodeParameter('operationId', index) as string;
-          if (operation !== 'videoUpload' && !/^[A-Za-z0-9._:-]{8,64}$/.test(operationId))
-            throw new NodeOperationError(this.getNode(), 'Operation ID must contain 8–64 safe characters.', { itemIndex: index });
-          if (operation === 'videoWatermark')
-            args = { videoUrl: this.getNodeParameter('videoUrl', index) as string, operationId };
-          else {
-            const binaryField = this.getNodeParameter('binaryField', index) as string;
-            const binary = this.helpers.assertBinaryData(index, binaryField);
-            const buffer = await this.helpers.getBinaryDataBuffer(index, binaryField);
-            const video = operation === 'videoUpload';
-            const mediaType = video ? 'video' : 'image';
-            const allowed = video ? /\.(mp4|mov)$/i.test(binary.fileName || '')
-              : ['image/png', 'image/jpeg', 'image/webp'].includes(binary.mimeType || '');
-            const maxSize = video ? 200 * 1024 * 1024 : 50 * 1024 * 1024;
-            if (!allowed || buffer.length === 0 || buffer.length > maxSize)
-              throw new NodeOperationError(this.getNode(), video
-                ? 'Use an MP4 or MOV video under 200 MB.' : 'Use a PNG, JPEG or WebP image under 50 MB.',
-              { itemIndex: index });
-            const prepared = await invoke('prepare_media_upload', { mediaType, fileSize: buffer.length });
-            if (!video && prepared.enoughCredits === false)
-              throw new NodeOperationError(this.getNode(), 'Insufficient 550W credits.', { itemIndex: index });
-            const uploadUrl = String(prepared.uploadUrl || '');
-            const uploadTicket = String(prepared.uploadTicket || '');
-            const url = new URL(uploadUrl);
-            if (url.origin !== 'https://www.550wai.cn' || url.pathname !== `/mcp-media/global/${mediaType}`
-                || url.search || url.hash || !uploadTicket)
-              throw new NodeOperationError(this.getNode(), 'Invalid 550W upload ticket or destination.', { itemIndex: index });
-            const form = new FormData();
-            form.append('file', new Blob([new Uint8Array(buffer)], { type: binary.mimeType }),
-              binary.fileName || (video ? 'video.mp4' : 'image.png'));
-            if (!video) form.append('operationId', operationId);
-            const result = await this.helpers.httpRequest({ method: 'POST', url: uploadUrl,
-              headers: { 'X-550W-Upload-Ticket': uploadTicket }, body: form, json: true,
-              disableFollowRedirect: true });
-            if ((!video && result.code !== 200) || (video && !result.mediaId))
-              throw new NodeOperationError(this.getNode(), String(result.errorCode || 'Media upload failed.'),
-                { itemIndex: index });
-            output.push({ json: result as IDataObject, pairedItem: index });
-            continue;
-          }
-        }
-        output.push({ json: await invoke(tool, args) as IDataObject, pairedItem: index });
-      } catch (error) {
-        if (this.continueOnFail()) {
-          output.push({ json: { error: error instanceof Error ? error.message : 'Unknown error' },
-            pairedItem: index });
+        const operation = String(this.getNodeParameter('operation', index));
+        if (PAID.includes(operation) && this.getNode().typeVersion === 1)
+          throw new UnexpectedError('Upgrade this node to version 2 and reconnect REST OAuth before submitting a paid task.');
+        if (this.getNode().type.endsWith('Tool') && !READ.includes(operation)) throw new UnexpectedError('AI Tool usage is limited to read-only operations.');
+        if (['videoUpload', 'subtitleMedia'].includes(operation)) throw new UnexpectedError('Legacy MCP upload workflows must migrate to Remove Video Text From Binary File and reconnect OAuth.');
+        const request = async (path: string, body?: IDataObject) =>
+          parseResponse(await this.helpers.httpRequestWithAuthentication.call(this, AUTH, {
+            method: body ? 'POST' : 'GET', url: ENDPOINT + path, json: true,
+            ...(body ? { body } : {}), disableFollowRedirect: true, timeout: 60000,
+          }));
+        let result: IDataObject;
+        if (operation === 'credits') result = await request('/account');
+        else if (['imageTask', 'subtitleTask'].includes(operation)) {
+          const task = String(this.getNodeParameter('taskId', index));
+          if (!/^[A-Za-z0-9._:-]{1,64}$/.test(task)) throw new UnexpectedError('Invalid task ID.');
+          result = await request('/tasks/' + (operation === 'imageTask' ? 'image' : 'video') + '/' + encodeURIComponent(task));
         } else {
-          throw new NodeOperationError(this.getNode(), error as Error, { itemIndex: index });
+          if (![...PAID, 'receipt'].includes(operation)) throw new UnexpectedError('Unsupported operation.');
+          operationId = String(this.getNodeParameter('operationId', index));
+          if (!/^[A-Za-z0-9._:-]{8,64}$/.test(operationId)) throw new UnexpectedError('Operation ID must contain 8–64 safe characters.');
+          if (operation === 'receipt') result = await request('/operations/' + encodeURIComponent(operationId));
+          else {
+            if (this.getNodeParameter('confirmCharge', index) !== true) throw new UnexpectedError('Approve upload and credit usage before submitting.');
+            const area = ['subtitleUrl', 'videoErase'].includes(operation)
+              && this.getNodeParameter('eraseRegion', index, 'full') === 'rectangle'
+              ? selectedArea(['x1', 'y1', 'x2', 'y2'].map(n => this.getNodeParameter(n, index))) : undefined;
+            if (['videoWatermark', 'subtitleUrl'].includes(operation)) {
+              const sourceUrl = String(this.getNodeParameter(operation === 'videoWatermark' ? 'videoUrl' : 'subtitleVideoUrl', index));
+              const url = new URL(sourceUrl);
+              if (url.protocol !== 'https:' || url.username || url.password) throw new UnexpectedError('Use a public HTTPS media link.');
+              submitted = true;
+              result = await request('/media', { operationId, mediaType: operation === 'videoWatermark' ? 'share' : 'video',
+                sourceUrl, ...(area ? { area } : {}) });
+            } else {
+              const field = String(this.getNodeParameter('binaryField', index));
+              const binary = this.helpers.assertBinaryData(index, field);
+              const video = operation === 'videoErase';
+              const limit = (video ? 200 : 50) * 1024 * 1024;
+              const allowed = video ? /\.(mp4|mov)$/i.test(binary.fileName || '')
+                : ['image/png', 'image/jpeg', 'image/webp'].includes(binary.mimeType || '');
+              if (!allowed) throw new UnexpectedError('Use PNG/JPEG/WebP images or MP4/MOV videos.');
+              const filename = video ? (/\.mov$/i.test(binary.fileName || '') ? 'video.mov' : 'video.mp4')
+                : (binary.mimeType === 'image/jpeg' ? 'image.jpg' : binary.mimeType === 'image/webp' ? 'image.webp' : 'image.png');
+              let size: number;
+              let uploadTicket = '';
+              let source: Awaited<ReturnType<IExecuteFunctions['helpers']['getBinaryStream']>>;
+              if (binary.id) {
+                size = (await this.helpers.getBinaryMetadata(binary.id)).fileSize;
+                if (!Number.isSafeInteger(size) || size <= 0 || size > limit) throw new UnexpectedError('Invalid media size or upload size limit exceeded.');
+                const ticket = await request('/upload-ticket', {});
+                uploadTicket = String(ticket.ticket || '');
+                if (!/^[0-9a-f-]{72}$/.test(uploadTicket)) throw new UnexpectedError('Invalid media upload ticket.');
+                source = await this.helpers.getBinaryStream(binary.id);
+              } else {
+                if (typeof binary.data === 'string' && binary.data.length > Math.ceil(limit / 3) * 4) throw new UnexpectedError('Upload size limit exceeded.');
+                const buffer = await this.helpers.getBinaryDataBuffer(index, field);
+                size = buffer.length;
+                if (!size || size > limit) throw new UnexpectedError('Upload size limit exceeded.');
+                const form = new FormData();
+                form.append('operationId', operationId);
+                form.append('mediaType', video ? 'video' : 'image');
+                if (area) form.append('area', area.join(','));
+                form.append('file', new Blob([new Uint8Array(buffer)], { type: binary.mimeType }), filename);
+                const ticket = await request('/upload-ticket', {});
+                uploadTicket = String(ticket.ticket || '');
+                if (!/^[0-9a-f-]{72}$/.test(uploadTicket)) throw new UnexpectedError('Invalid media upload ticket.');
+                submitted = true;
+                result = parseResponse(await this.helpers.httpRequest({
+                  method: 'POST', url: ENDPOINT + '/media', body: form, json: true,
+                  headers: { 'X-550W-Upload-Ticket': uploadTicket },
+                  disableFollowRedirect: true, timeout: 600000,
+                }));
+                output.push({ json: result, pairedItem: index });
+                continue;
+              }
+              const boundary = '550w-' + Date.now() + '-' + Math.random().toString(16).slice(2);
+              const fields: Record<string, string> = { operationId, mediaType: video ? 'video' : 'image', ...(area ? { area: area.join(',') } : {}) };
+              const prefix = Buffer.from(Object.entries(fields).map(([key, value]) =>
+                '--' + boundary + '\r\nContent-Disposition: form-data; name="' + key + '"\r\n\r\n' + value + '\r\n').join('')
+                + '--' + boundary + '\r\nContent-Disposition: form-data; name="file"; filename="' + filename + '"\r\nContent-Type: application/octet-stream\r\n\r\n');
+              const suffix = Buffer.from('\r\n--' + boundary + '--\r\n');
+              const factory = source.constructor as unknown as { from(input: AsyncIterable<Buffer>): typeof source };
+              if (typeof factory.from !== 'function') { source.destroy(); throw new UnexpectedError('Binary provider cannot compose an upload stream.'); }
+              const body = factory.from((async function* () {
+                yield prefix;
+                let received = 0;
+                for await (const chunk of source) {
+                  received += Buffer.byteLength(chunk);
+                  if (received > size) throw new UnexpectedError('Media stream exceeds declared size.');
+                  yield chunk;
+                }
+                if (received !== size) throw new UnexpectedError('Media stream is incomplete.');
+                yield suffix;
+              })());
+              try {
+                submitted = true;
+                result = parseResponse(await this.helpers.httpRequest({
+                  method: 'POST', url: ENDPOINT + '/media',
+                  headers: { 'Content-Type': 'multipart/form-data; boundary=' + boundary,
+                    'X-550W-Upload-Ticket': uploadTicket, 'Content-Length': prefix.length + size + suffix.length },
+                  body: body as unknown as Buffer, json: false, disableFollowRedirect: true, timeout: 600000,
+                }));
+              } finally { body.destroy(); source.destroy(); }
+            }
+          }
         }
+        output.push({ json: result, pairedItem: index });
+      } catch (error) {
+        // No automatic retry: transport failure is not proof that submission failed.
+        const message = (error instanceof Error ? error.message : '550W request failed.')
+          + (submitted ? ' Query operation receipt ' + operationId + ' before retrying; the task may already exist.' : '');
+        if (this.continueOnFail()) output.push({ json: { error: message, ...(submitted ? { operationId, submissionStatus: 'unknown' } : {}) }, pairedItem: index });
+        else throw new NodeOperationError(this.getNode(), message, { itemIndex: index });
       }
     }
     return [output];

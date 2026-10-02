@@ -20,5 +20,8 @@ jobs:
           package-manager-cache: false
       - run: npm ci
       - run: npm run lint
-      - run: npm run build
+      - run: npm test
+      - run: npm pack --dry-run
+      - name: Require tag to match package version
+        run: node -e 'if (process.env.GITHUB_REF_NAME !== require("./package.json").version) process.exit(1)'
       - run: npm publish --access public --provenance

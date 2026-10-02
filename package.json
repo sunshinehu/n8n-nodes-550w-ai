@@ -1,13 +1,13 @@
 {
   "name": "n8n-nodes-fiftyw-media",
-  "version": "0.1.2",
-  "description": "550W AI subtitle and watermark removal with web OAuth",
+  "version": "3.1.4",
+  "description": "Erase image watermarks and video text, and resolve share links using native 550W OAuth REST APIs",
   "homepage": "https://eraser.550wai.com/agent/",
   "license": "MIT",
   "keywords": [
     "n8n-community-node-package",
     "n8n",
-    "mcp",
+    "oauth2",
     "subtitle-removal",
     "watermark-removal"
   ],
@@ -21,11 +21,16 @@
   },
   "scripts": {
     "build": "n8n-node build",
+    "test": "npm run build && node --test test/*.test.js",
     "lint": "n8n-node lint",
     "dev": "n8n-node dev"
   },
   "files": [
-    "dist"
+    "dist/credentials/FiftyWOAuth2Api.credentials.js",
+    "dist/nodes/FiftyW/FiftyW.node.js",
+    "dist/nodes/FiftyW/icon.svg",
+    "examples/*.json",
+    "docs/server-setup.md"
   ],
   "n8n": {
     "n8nNodesApiVersion": 1,

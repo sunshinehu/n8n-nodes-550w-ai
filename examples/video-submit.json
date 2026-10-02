@@ -1,0 +1,51 @@
+{
+  "name": "550W video URL submission",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual-start",
+      "name": "Start",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "video",
+        "operation": "subtitleUrl",
+        "operationId": "replace-with-your-stable-id",
+        "subtitleVideoUrl": "https://example.com/replace-with-your-video.mp4",
+        "confirmCharge": false,
+        "eraseRegion": "full"
+      },
+      "id": "550w-action",
+      "name": "550W video URL submission",
+      "type": "n8n-nodes-fiftyw-media.fiftyW",
+      "typeVersion": 2,
+      "position": [
+        260,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "550W video URL submission",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false
+}
