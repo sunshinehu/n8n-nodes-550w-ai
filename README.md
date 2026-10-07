@@ -53,7 +53,7 @@ node scripts/credential-startup-smoke.cjs /absolute/path/to/n8n/node_modules
 It compares early Connect, Connect after initialization, and Save then Connect;
 all authorization is mocked. It does not replace real OAuth acceptance or patch
 n8n itself. The native credential notice includes these steps in the next release
-candidate; the already published 3.1.5 package is not overwritten.
+release; the already published 3.1.5 package is not overwritten.
 
 This package targets the international channel. English product copy and the
 international processing/recharge entry are at https://eraser.550wai.com/.
@@ -133,7 +133,7 @@ OAuth round-trip/refresh/revocation works. Before publication, verify exact call
 fresh login, refresh, revocation, image and short video processing, receipt recovery
 and result URLs against the deployed service. No review acceptance is implied.
 
-## Package identity and migration (3.1.6 candidate)
+## Package identity and migration (3.1.7)
 
 The canonical package is `n8n-nodes-fiftyw-media`; the public node type is
 `n8n-nodes-fiftyw-media.fiftyW` and credential type is `fiftyWOAuth2Api`.
