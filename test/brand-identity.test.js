@@ -27,3 +27,9 @@ test('published package registers only branded identity, avoiding global legacy 
  assert.deepEqual(manifest.n8n.credentials,['dist/credentials/FiftyWOAuth2Api.credentials.js']);
  assert.deepEqual(manifest.n8n.nodes,['dist/nodes/FiftyW/FiftyW.node.js']);
 });
+
+test('brand display name coexists with legacy installed_nodes name primary key',()=>{
+ const names=[new MossAi().description.displayName,new FiftyW().description.displayName];
+ assert.equal(names[1],'550W AI Subtitle & Watermark Remover');
+ assert.notEqual(names[0],names[1]);
+});

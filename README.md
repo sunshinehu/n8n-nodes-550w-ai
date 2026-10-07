@@ -133,7 +133,7 @@ OAuth round-trip/refresh/revocation works. Before publication, verify exact call
 fresh login, refresh, revocation, image and short video processing, receipt recovery
 and result URLs against the deployed service. No review acceptance is implied.
 
-## Package identity and migration (3.1.7)
+## Package identity and migration (3.1.8)
 
 The canonical package is `n8n-nodes-fiftyw-media`; the public node type is
 `n8n-nodes-fiftyw-media.fiftyW` and credential type is `fiftyWOAuth2Api`.
@@ -149,3 +149,5 @@ add the branded node and a new OAuth credential, reconnect, then verify read-onl
 queries before transferring processing actions. Never automatically replay paid
 operations. Remove the old node/package only after all affected workflows have
 been verified. The duplicate review application must not be resubmitted.
+
+Version 3.1.8 uses the display name **550W AI Subtitle & Watermark Remover**. This allows installation alongside the legacy node on n8n databases that require unique display names. Node types, credential identifiers and existing workflows are unchanged.

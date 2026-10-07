@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-fiftyw-media",
-  "version": "3.1.7",
+  "version": "3.1.8",
   "description": "Erase image watermarks and video text, and resolve share links using native 550W OAuth REST APIs",
   "homepage": "https://eraser.550wai.com/agent/",
   "license": "MIT",
