@@ -17,7 +17,8 @@ Use a current n8n release supporting dynamic OAuth registration with `usePkce` a
 resource indicators. The previously tested n8n 2.40.7 MCP workflow is **not**
 evidence that this new REST integration passes end-to-end verification.
 
-1. Create the **550W Media OAuth2 API** credential.
+1. Create the **550W Media OAuth2 API** credential. Wait until its generated name
+   appears in the editor header, then click **Save** before **Connect**.
 2. Use a production n8n instance with an HTTPS OAuth callback ending in
    `/rest/oauth2-credential/callback` (a reverse-proxy path prefix is supported).
 3. Connect your 550W account. n8n discovers the HTTP resource and registers an
@@ -32,6 +33,27 @@ Authorization and token issuance share the existing authorization service.
 The global resource selects the existing international English consent page.
 Requested scopes: credits:read, tasks:read, tasks:submit, media:upload. No deletion
 scope. n8n owns OAuth callback, encrypted credential storage and token refresh.
+
+### First connection troubleshooting
+
+In n8n 2.41.5 the credential name is generated asynchronously. Clicking Connect
+before the name appears can fail with `String must contain at least 1 character(s)`.
+This is n8n's local credential-creation validation, before any 550W OAuth request.
+Wait for a non-empty name (or supply one), click Save, then Connect. Do not change
+the callback, OAuth scopes or Server validation to work around this editor race.
+Existing saved credentials and tokens do not need replacement for this issue.
+
+An offline, host-pinned reproduction using the installed n8n initializer,
+Connect handler and credential DTO is available:
+
+```sh
+node scripts/credential-startup-smoke.cjs /absolute/path/to/n8n/node_modules
+```
+
+It compares early Connect, Connect after initialization, and Save then Connect;
+all authorization is mocked. It does not replace real OAuth acceptance or patch
+n8n itself. The native credential notice includes these steps in the next release
+candidate; the already published 3.1.5 package is not overwritten.
 
 This package targets the international channel. English product copy and the
 international processing/recharge entry are at https://eraser.550wai.com/.
@@ -111,5 +133,19 @@ OAuth round-trip/refresh/revocation works. Before publication, verify exact call
 fresh login, refresh, revocation, image and short video processing, receipt recovery
 and result URLs against the deployed service. No review acceptance is implied.
 
-Package name stays `n8n-nodes-fiftyw-media`. Historical npm versions 0.1.x used MCP
-and were not accepted by manual review; this REST migration requires a new review.
+## Package identity and migration (3.1.6 candidate)
+
+The canonical package is `n8n-nodes-fiftyw-media`; the public node type is
+`n8n-nodes-fiftyw-media.fiftyW` and credential type is `fiftyWOAuth2Api`.
+The package registers only the branded node and credential. The old package
+retains its own `mossAi` and `mossAiOAuth2Api` registrations; registering these
+again would collide in n8n’s global credential registry. It does not rewrite saved workflows or move encrypted tokens.
+Existing branded workflows retain their node and credential identities.
+
+A workflow created with the separate `n8n-nodes-moss-ai` package retains that
+package prefix; installing the branded package does not resolve it automatically.
+Keep the old package installed until migration is complete. Back up the workflow,
+add the branded node and a new OAuth credential, reconnect, then verify read-only
+queries before transferring processing actions. Never automatically replay paid
+operations. Remove the old node/package only after all affected workflows have
+been verified. The duplicate review application must not be resubmitted.
