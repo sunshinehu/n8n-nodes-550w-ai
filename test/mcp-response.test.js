@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { parseMcpResponse, eraseRectangle } = require('../dist/nodes/MossAi/mcp-response');
+const { parseMcpResponse, eraseRectangle } = require('../dist/shared/mcp-response');
 test('MCP JSON and SSE return the same result', () => {
   const value = { jsonrpc: '2.0', id: 1, result: { structuredContent: { credits: 5 } } };
   assert.deepEqual(parseMcpResponse(value), value);
