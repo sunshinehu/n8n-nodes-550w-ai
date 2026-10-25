@@ -1,3 +1,4 @@
+import { PACKAGE_VERSION } from './version';
 import type { IDataObject, IExecuteFunctions, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError, UnexpectedError } from 'n8n-workflow';
 
@@ -86,6 +87,7 @@ export class MossAi implements INodeType {
         const request = async (path: string, body?: IDataObject) =>
           parseResponse(await this.helpers.httpRequestWithAuthentication.call(this, this.getNode().type.split('.').pop() === 'fiftyW' ? 'fiftyWOAuth2Api' : CREDENTIAL_TYPE, {
             method: body ? 'POST' : 'GET', url: ENDPOINT + path, json: true,
+            headers: { 'X-550W-Product': 'adapter-n8n', 'X-550W-Product-Version': PACKAGE_VERSION },
             ...(body ? { body } : {}), disableFollowRedirect: true, timeout: 60000,
           }));
         let result: IDataObject;
@@ -147,7 +149,7 @@ export class MossAi implements INodeType {
                 submitted = true;
                 result = parseResponse(await this.helpers.httpRequest({
                   method: 'POST', url: ENDPOINT + '/media', body: form, json: true,
-                  headers: { 'X-550W-Upload-Ticket': uploadTicket },
+                  headers: { 'X-550W-Product': 'adapter-n8n', 'X-550W-Product-Version': PACKAGE_VERSION, 'X-550W-Upload-Ticket': uploadTicket },
                   disableFollowRedirect: true, timeout: 600000,
                 }));
                 output.push({ json: result, pairedItem: index });
@@ -176,7 +178,7 @@ export class MossAi implements INodeType {
                 submitted = true;
                 result = parseResponse(await this.helpers.httpRequest({
                   method: 'POST', url: ENDPOINT + '/media',
-                  headers: { 'Content-Type': 'multipart/form-data; boundary=' + boundary,
+                  headers: { 'X-550W-Product': 'adapter-n8n', 'X-550W-Product-Version': PACKAGE_VERSION, 'Content-Type': 'multipart/form-data; boundary=' + boundary,
                     'X-550W-Upload-Ticket': uploadTicket, 'Content-Length': prefix.length + size + suffix.length },
                   body: body as unknown as Buffer, json: false, disableFollowRedirect: true, timeout: 600000,
                 }));

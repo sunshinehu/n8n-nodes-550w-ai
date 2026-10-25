@@ -1,3 +1,4 @@
+import { PACKAGE_VERSION } from './version';
 import type { Icon, ICredentialType, ICredentialTestRequest, INodeProperties } from 'n8n-workflow';
 export class MossAiOAuth2Api implements ICredentialType {
   name = 'mossAiOAuth2Api';
@@ -6,7 +7,7 @@ export class MossAiOAuth2Api implements ICredentialType {
   icon: Icon = { light: 'file:../nodes/FiftyW/icon.svg', dark: 'file:../nodes/FiftyW/icon.svg' };
   documentationUrl = 'https://eraser.550wai.com/agent/';
   test: ICredentialTestRequest = {
-    request: { baseURL: 'https://www.550wai.cn/media-api/global/v1', url: '/account', method: 'GET' },
+    request: { baseURL: 'https://www.550wai.cn/media-api/global/v1', url: '/account', method: 'GET', headers: { 'X-550W-Product': 'adapter-n8n', 'X-550W-Product-Version': PACKAGE_VERSION } },
   };
   properties: INodeProperties[] = [
     { displayName: 'Wait until the credential name appears, click Save, then Connect using your 550W account. No API key or shared client secret is required. After upgrading from 3.1.4 or earlier, create a new credential to use automatic registration. Your n8n instance needs an HTTPS OAuth callback.', name: 'connectionNotice', type: 'notice', default: '' },
